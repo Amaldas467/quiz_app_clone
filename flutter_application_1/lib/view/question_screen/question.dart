@@ -3,20 +3,48 @@ import 'package:flutter_application_1/utils/color_constant.dart';
 import 'package:flutter_application_1/utils/database.dart';
 import 'package:flutter_application_1/view/resultscreen/resultscreen.dart';
 
-class QuestionScreen extends StatefulWidget {
-  const QuestionScreen({Key? key}) : super(key: key);
+class QuestionPage extends StatefulWidget {
+  final int? selectedCategoryIndex;
+
+  const QuestionPage({Key? key, this.selectedCategoryIndex}) : super(key: key);
 
   @override
-  State<QuestionScreen> createState() => _QuestionScreenState();
+  State<QuestionPage> createState() => _QuestionPageState();
 }
 
-class _QuestionScreenState extends State<QuestionScreen> {
-  int questionindex = 0;
-  int? selectedindex;
+class _QuestionPageState extends State<QuestionPage> {
+  int questionIndex = 0;
+  int? selectedIndex;
   int count = 0;
+  late List<Map<String, dynamic>> questions; // Declare questions here
+
+  @override
+  void initState() {
+    super.initState();
+    // Initialize questions based on selectedCategoryIndex
+    switch (widget.selectedCategoryIndex) {
+      case 0:
+        questions = Questiondb.literaturequestion;
+        break;
+      case 1:
+        questions = Questiondb.sportsquestion;
+        break;
+      case 2:
+        questions = Questiondb.sciencequestion;
+        break;
+      case 3:
+        questions = Questiondb.itquestions;
+        break;
+      default:
+        questions = [];
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    List<dynamic> options = questions[questionIndex]["options"];
+
     return Scaffold(
       backgroundColor: Colorconstant.mycustomblack,
       appBar: AppBar(
@@ -25,9 +53,9 @@ class _QuestionScreenState extends State<QuestionScreen> {
           Padding(
             padding: const EdgeInsets.all(15),
             child: Text(
-              "${questionindex + 1}/${Questiondb.question.length}",
+              "${questionIndex + 1}/${questions.length}",
               style: TextStyle(
-                color: Colorconstant.mycustomwhite,
+                color: Colorconstant.mycustomgrey,
                 fontWeight: FontWeight.bold,
                 fontSize: 20,
               ),
@@ -51,7 +79,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 color: Colorconstant.mycustomgrey,
               ),
               child: Text(
-                Questiondb.question[questionindex]["question"].toString(),
+                questions[questionIndex]["question"].toString(),
                 style: TextStyle(
                   color: Colorconstant.mycustomwhite,
                   fontSize: 20,
@@ -60,8 +88,6 @@ class _QuestionScreenState extends State<QuestionScreen> {
               ),
             ),
           ),
-
-          // 2nd container
           ListView.separated(
             shrinkWrap: true,
             physics: NeverScrollableScrollPhysics(),
@@ -70,24 +96,19 @@ class _QuestionScreenState extends State<QuestionScreen> {
                 padding: const EdgeInsets.all(15),
                 child: InkWell(
                   onTap: () {
-                    selectedindex = index;
-                    getcolor(index);
-                    print('selectedindex');
-                    if (selectedindex != [index]) {
-                      ////
-                      index++;
-                    }
-                    setState(() {});
+                    setState(() {
+                      selectedIndex = index;
+                    });
                   },
                   child: Container(
                     height: 60,
                     width: 50,
                     decoration: BoxDecoration(
-                      color: getcolor(index),
+                      color: getcolor(index), // Modified here
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         width: 3,
-                        color: getcolor(index),
+                        color: getcolor(index), // Modified here
                       ),
                     ),
                     child: Padding(
@@ -96,8 +117,7 @@ class _QuestionScreenState extends State<QuestionScreen> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            Questiondb.question[questionindex]["options"][index]
-                                .toString(),
+                            options[index].toString(),
                             style: TextStyle(
                               color: Colorconstant.mycustomwhite,
                             ),
@@ -120,44 +140,51 @@ class _QuestionScreenState extends State<QuestionScreen> {
               );
             },
             separatorBuilder: (context, optionIndex) => SizedBox(height: 0),
-            itemCount: Questiondb.question[questionindex]["options"].length,
+            itemCount: options.length,
           ),
-
           SizedBox(
             height: 10,
           ),
-
           ElevatedButton(
             style: ButtonStyle(
-              backgroundColor:
-                  MaterialStatePropertyAll(Colorconstant.mycustomblue),
-              shape: MaterialStatePropertyAll(RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              )),
+              backgroundColor: MaterialStateProperty.all(
+                Colorconstant.mycustomblue,
+              ),
+              shape: MaterialStateProperty.all(
+                RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
             ),
             onPressed: () {
-              if (selectedindex != null &&
-                  selectedindex ==
-                      Questiondb.question[questionindex]["answer"]) {
+              if (selectedIndex != questions[questionIndex]["answer"]) {
+                // Check if the answer is correct
                 count++;
               }
-              selectedindex = null;
-              if (questionindex + 1 < Questiondb.question.length) {
+              selectedIndex = null;
+              if (questionIndex + 1 < questions.length) {
                 setState(() {
-                  questionindex++;
+                  questionIndex++;
                 });
               } else {
                 print('Correct Answers: $count');
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => ResultScreen(count: count),
+                    builder: (context) => ResultScreen(
+                      count: count,
+                      correctAnswers:
+                          count, // Assuming all answered questions are correct
+                      wrongAnswers: 0, // Assuming no wrong answers
+                      skippedCount: questions.length -
+                          count, // Total questions minus answered questions
+                    ),
                   ),
                 );
               }
             },
             child: Text(
-              "       Next      ",
+              "Next",
               style: TextStyle(color: Colors.white),
             ),
           )
@@ -167,16 +194,15 @@ class _QuestionScreenState extends State<QuestionScreen> {
   }
 
   Color getcolor(int index) {
-    if (selectedindex != null &&
-        index == Questiondb.question[questionindex]["answer"]) {
+    final int correctAnswerIndex = questions[questionIndex]["answer"];
+    final bool isWrongAnswer =
+        selectedIndex != correctAnswerIndex && selectedIndex == index;
+
+    if (selectedIndex != null && index == correctAnswerIndex) {
       return Colorconstant.mycustomgreen;
     }
-    if (selectedindex == index) {
-      if (selectedindex == Questiondb.question[questionindex]["answer"]) {
-        return Colorconstant.mycustomgreen;
-      } else {
-        return Colorconstant.mycustomred;
-      }
+    if (selectedIndex == index) {
+      return isWrongAnswer ? Colors.red : Colors.green;
     } else {
       return Colorconstant.mycustomgrey;
     }
